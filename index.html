@@ -1,0 +1,270 @@
+import cv2
+import numpy as np
+import gradio as gr
+
+
+def process_image(image):
+
+    # تحويل الصورة من RGB إلى BGR
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    # -----------------------------------------
+    # Original
+    # -----------------------------------------
+    original = image.copy()
+
+    # -----------------------------------------
+    # Resize
+    # -----------------------------------------
+    resized = cv2.resize(
+        image,
+        (60, 60),
+        interpolation=cv2.INTER_AREA
+    )
+
+    # -----------------------------------------
+    # Denoising
+    # -----------------------------------------
+    denoised = cv2.fastNlMeansDenoisingColored(
+        image,
+        None,
+        h=10,
+        hColor=5,
+        templateWindowSize=5,
+        searchWindowSize=10
+    )
+
+    # -----------------------------------------
+    # Border
+    # -----------------------------------------
+    blue_color = [128, 0, 0]
+
+    bordered = cv2.copyMakeBorder(
+        denoised,
+        5, 5, 5, 5,
+        cv2.BORDER_CONSTANT,
+        value=blue_color
+    )
+
+    # -----------------------------------------
+    # Cropping
+    # -----------------------------------------
+    h, w = image.shape[:2]
+
+    y2 = min(270, h)
+    x2 = min(370, w)
+
+    cropped = image[
+        50:y2,
+        50:x2
+    ]
+
+    # -----------------------------------------
+    # Grayscale
+    # -----------------------------------------
+    gray = cv2.cvtColor(
+        image,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    # -----------------------------------------
+    # Rotation
+    # -----------------------------------------
+    center = (
+        w // 2,
+        h // 2
+    )
+
+    rotation_matrix = cv2.getRotationMatrix2D(
+        center,
+        45,
+        1.0
+    )
+
+    rotated = cv2.warpAffine(
+        image,
+        rotation_matrix,
+        (w, h)
+    )
+
+    # -----------------------------------------
+    # Color Channels
+    # -----------------------------------------
+    b, g, r = cv2.split(image)
+
+    zeros = np.zeros(
+        image.shape[:2],
+        dtype=np.uint8
+    )
+
+    blue = cv2.merge([
+        b,
+        zeros,
+        zeros
+    ])
+
+    green = cv2.merge([
+        zeros,
+        g,
+        zeros
+    ])
+
+    red = cv2.merge([
+        zeros,
+        zeros,
+        r
+    ])
+
+    # -----------------------------------------
+    # HSV
+    # -----------------------------------------
+    hsv = cv2.cvtColor(
+        image,
+        cv2.COLOR_BGR2HSV
+    )
+
+    # -----------------------------------------
+    # RGB
+    # -----------------------------------------
+    rgb = cv2.cvtColor(
+        image,
+        cv2.COLOR_BGR2RGB
+    )
+
+    # تحويل النتائج إلى RGB
+    original = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
+    resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+    denoised = cv2.cvtColor(denoised, cv2.COLOR_BGR2RGB)
+    bordered = cv2.cvtColor(bordered, cv2.COLOR_BGR2RGB)
+    cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
+    rotated = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+
+    blue = cv2.cvtColor(blue, cv2.COLOR_BGR2RGB)
+    green = cv2.cvtColor(green, cv2.COLOR_BGR2RGB)
+    red = cv2.cvtColor(red, cv2.COLOR_BGR2RGB)
+
+    hsv = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    return (
+        original,
+        resized,
+        denoised,
+        bordered,
+        cropped,
+        gray,
+        rotated,
+        blue,
+        green,
+        red,
+        hsv,
+        rgb
+    )
+
+
+# =========================================================
+# واجهة HTML / Web Interface
+# =========================================================
+
+with gr.Blocks(
+    title="OpenCV Image Processing"
+) as demo:
+
+    gr.Markdown(
+        """
+        # OpenCV Image Processing
+
+        قم باختيار صورة من جهازك، وسيتم تطبيق عمليات
+        معالجة الصور عليها تلقائياً.
+        """
+    )
+
+    input_image = gr.Image(
+        type="numpy",
+        label="اختر صورة من جهازك"
+    )
+
+    process_button = gr.Button(
+        "معالجة الصورة"
+    )
+
+    gr.Markdown("## النتائج")
+
+    with gr.Row():
+
+        original_output = gr.Image(
+            label="Original"
+        )
+
+        resized_output = gr.Image(
+            label="Resize"
+        )
+
+        denoised_output = gr.Image(
+            label="Denoising"
+        )
+
+    with gr.Row():
+
+        bordered_output = gr.Image(
+            label="Border"
+        )
+
+        cropped_output = gr.Image(
+            label="Cropping"
+        )
+
+        gray_output = gr.Image(
+            label="Grayscale"
+        )
+
+    with gr.Row():
+
+        rotated_output = gr.Image(
+            label="Rotation"
+        )
+
+        blue_output = gr.Image(
+            label="Blue Channel"
+        )
+
+        green_output = gr.Image(
+            label="Green Channel"
+        )
+
+    with gr.Row():
+
+        red_output = gr.Image(
+            label="Red Channel"
+        )
+
+        hsv_output = gr.Image(
+            label="HSV"
+        )
+
+        rgb_output = gr.Image(
+            label="RGB"
+        )
+
+    process_button.click(
+        fn=process_image,
+        inputs=input_image,
+        outputs=[
+            original_output,
+            resized_output,
+            denoised_output,
+            bordered_output,
+            cropped_output,
+            gray_output,
+            rotated_output,
+            blue_output,
+            green_output,
+            red_output,
+            hsv_output,
+            rgb_output
+        ]
+    )
+
+
+demo.launch(
+    share=True
+)
